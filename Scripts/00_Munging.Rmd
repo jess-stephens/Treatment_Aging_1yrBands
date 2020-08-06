@@ -1,0 +1,533 @@
+---
+title: "01_Munging"
+author: "Jessica Stephens"
+date: "7/21/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+
+## Importing Data
+
+data is in a microsoft excel workbook
+readxl
+
+```{r load, echo=FALSE}
+
+#check wd and file path match
+
+here("ZMB MWI KEN UGA by age group DataList_7_9_2020 2_37_41 PM.xlsx")
+getwd()
+setwd("C:/Users/jesse/OneDrive/Documents/Work Material/USAID/Treatment/Treatment_Aging_1yrBands")
+
+#read xlsx - specify path, sheet name to read
+
+df_ken_uga <- read_xlsx("Data/ZMB MWI KEN UGA by age group DataList_7_9_2020 2_37_41 PM.xlsx",
+                sheet="KEN and UGA") 
+
+
+df_zmb_mwi <- read_xlsx("Data/ZMB MWI KEN UGA by age group DataList_7_9_2020 2_37_41 PM.xlsx",
+                sheet="ZMB and MWI") 
+
+```
+
+## Check Data Import
+
+
+```{r load, echo=FALSE}
+
+glimpse(df_ken_uga)
+View(df_ken_uga)
+
+```
+
+
+
+## Append dataset
+We can add both df's together to have one df with all of the observations for the 4 countries as a foundational df
+will use bind_rows here in the tidyverse, but union can also be used in base R to see if things are compatible
+
+```{r load, echo=FALSE}
+
+df_combined <- bind_rows(df_ken_uga, df_zmb_mwi)
+
+
+```
+
+See what that looks like
+
+```{r}
+print(df_combined)
+view(df_combined)
+```
+
+
+
+
+
+
+
+
+## Clean dataset: Isolate Age from E_Ind and drop unnecessary columns/variables
+
+Goal: the numbers for each one-year age band of people with HIV and of people on ART
+# make a new variable with the the values after "Age" and before ";"
+```{r load, echo=FALSE}
+
+df_combined_seperate1 <-df_combined  %>% 
+    separate(E_Ind, c("A","B", "C", "D", "E"), sep = "([+;])")
+view(df_combined_seperate1)
+
+#"B" holds the age
+
+
+df_combined_seperate2 <- df_combined_seperate1 %>% 
+  separate(B, c("X", "Y", "Age_num"), sep = "([ ])")
+  view(df_combined_seperate2)
+
+  
+df_combined_seperate3<- df_combined_seperate2 %>% 
+  separate(A, c("X1", "PLVHIV_or_ART", "X2"), sep = "([-])")
+view(df_combined_seperate3)
+
+
+names(df_combined_seperate3)
+#drop 0 from PLHIV vs ART
+
+df_combined_seperate4<- df_combined_seperate3 %>% 
+    separate("PLVHIV_or_ART", c("PLVHIV_or_ART", "Y1"), sep = "([0])")
+view(df_combined_seperate4)
+  
+#drop X1, X2, Y, X, C, D, E,Y1
+df_combined_seperate5<- df_combined_seperate4 %>% 
+    select(E_Count, PLVHIV_or_ART, Age_num, Time, Value, Rounded)
+view(df_combined_seperate5)
+
+#rename country variable
+df_combined_seperate6<- df_combined_seperate5 %>% 
+    rename(Country=E_Count)
+view(df_combined_seperate6)
+glimpse(df_combined_seperate6)
+
+df_combined_seperate6$Age_num<-
+    as.numeric(as.character(unlist(df_combined_seperate6$Age_num)))
+view(df_combined_seperate6)
+glimpse(df_combined_seperate6)
+
+```
+
+
+#############################################
+# Restructure data
+##############################################
+
+## add variables for Age Categories for ACTUAL Age
+
+Create categories for PEPFAR age brackets
+<1
+1-4
+5-9
+10-14
+15-19
+20-24
+25-29
+30-34
+35-39
+40-44
+45-49
+50+
+
+As well as older fine age brackets
+<1
+1-9
+10-14
+15-19
+20-24
+25-29
+30-34
+35-39
+40-44
+45-49
+50+
+
+https://stackoverflow.com/questions/12979456/r-code-to-categorize-age-into-group-bins-breaks 
+
+
+```{r load, echo=FALSE}
+#find max
+range(df_combined_seperate6$Age_num)
+#0-80
+
+library(data.table)
+
+PEPFARagebreaks <- c(0,1,5,10,15,20,25,30,35,40,45,50,85)
+PEPFARagelabels <- c("<1","1-4","5-9","10-14","15-19","20-24","25-29","30-34",
+               "35-39","40-44","45-49","50+")
+PEPFARagebreaks18 <- c(0,1,10,15,20,25,30,35,40,45,50,85)
+PEPFARagelabels18 <- c("<1","1-9","10-14","15-19","20-24","25-29","30-34",
+               "35-39","40-44","45-49","50+")
+
+
+df_combined_PEPFARage2019 <- setDT(df_combined_seperate6) [ , ACTUAL_Age_cat_Fine := cut(Age_num, 
+                                breaks = PEPFARagebreaks, 
+                                right = FALSE, 
+                                labels = PEPFARagelabels)]
+view(df_combined_PEPFARage2019)
+glimpse(df_combined_PEPFARage2019)
+
+
+
+df_combined_PEPFARage2018 <- setDT(df_combined_PEPFARage2019) [ , ACTUAL_Age_cat_SemiFine := cut(Age_num, 
+                                breaks = PEPFARagebreaks18, 
+                                right = FALSE, 
+                                labels = PEPFARagelabels18)]
+
+
+view(df_combined_PEPFARage2018)
+glimpse(df_combined_PEPFARage2018)
+names(df_combined_PEPFARage2018)
+#df_combined_PEPFARagegroups <- df_combined_PEPFARage2018 %>%
+ # select(!c(agegroups, agegroups18, agegroups19))
+#names(df_combined_PEPFARagegroups)
+#view(df_combined_PEPFARagegroups)
+```
+
+#cant get cut to work below
+df_combined_PEPFARage2019 <- df_combined_seperate6 %>% 
+    findInterval(df_combined_seperate6$Age_num, c(0,4,9,14,19,24,29,34,39,44,49,80))
+    cut(df_combined_seperate6$Age_num, c(0,4,9,14,19,24,29,34,39,44,49,80, right=FALSE))
+view(df_combined_PEPFARage2019)
+glimpse(df_combined_PEPFARage2019)
+###Error in cut.default(df_combined_seperate6$Age_num, c(0, 4, 9, 14, 19, : 'breaks' are not unique
+
+
+
+
+
+
+
+
+# Figure out predicted ages 
+#ex, 2017 ages if 2016 aged w/o other loss/gains
+
+
+```{r load, echo=FALSE}
+
+df_combined_PREDICTagetime <- df_combined_PEPFARage2018 %>%
+ mutate(Age_predict=Age_num+1, Time_predict=Time+1)
+view(df_combined_PREDICTagetime)
+
+
+
+df_combined_PREDICTagegroups <- setDT(df_combined_PREDICTagetime) [ , PREDICT_Age_cat_Fine := cut(Age_predict, 
+                                breaks = PEPFARagebreaks, 
+                                right = FALSE, 
+                                labels = PEPFARagelabels)]
+view(df_combined_PREDICTagegroups)
+glimpse(df_combined_PREDICTagegroups)
+
+
+
+df_combined_PREDICTagegroups <- setDT(df_combined_PREDICTagegroups) [ , PREDICT_Age_cat_SemiFine := cut(Age_predict, 
+                                breaks = PEPFARagebreaks18, 
+                                right = FALSE, 
+                                labels = PEPFARagelabels18)]
+
+
+view(df_combined_PREDICTagegroups)
+glimpse(df_combined_PREDICTagegroups)
+names(df_combined_PREDICTagegroups)
+
+
+
+
+```
+
+
+
+
+
+
+## Group by Age Groups and Country 
+#actual and predicted separately
+#merge actual and predicted
+
+```{r load, echo=FALSE}
+
+#only for semi fine brackets at this time
+
+df_long_Grouped_Actual_SemiFine<- df_combined_PREDICTagegroups %>%
+  group_by(Country, PLVHIV_or_ART, Time, ACTUAL_Age_cat_SemiFine) %>%
+  summarise(Total_Value_Actual=sum(Value))
+glimpse(df_long_Grouped_Actual_SemiFine)
+view(df_long_Grouped_Actual_SemiFine)
+
+
+df_long_Grouped_Predict_SemiFine<- df_combined_PREDICTagegroups %>%
+  group_by(Country, PLVHIV_or_ART, Time_predict, PREDICT_Age_cat_SemiFine) %>%
+  summarise(Total_Value_Predict=sum(Value))
+glimpse(df_long_Grouped_Predict_SemiFine)
+view(df_long_Grouped_Predict_SemiFine)
+
+
+#rename predict variables to match actual so they can merge
+df_long_Grouped_Predict_SemiFine_vars<- df_long_Grouped_Predict_SemiFine %>%
+  rename(Time=Time_predict, ACTUAL_Age_cat_SemiFine=PREDICT_Age_cat_SemiFine)
+glimpse(df_long_Grouped_Predict_SemiFine_vars)
+view(df_long_Grouped_Predict_SemiFine_vars)
+
+df_long_Grouped_SemiFine <- df_long_Grouped_Actual_SemiFine %>% 
+  left_join(df_long_Grouped_Predict_SemiFine_vars, by=c("Time"="Time", "ACTUAL_Age_cat_SemiFine"="ACTUAL_Age_cat_SemiFine","Country"="Country", "PLVHIV_or_ART"="PLVHIV_or_ART"))
+view(df_long_Grouped_SemiFine)
+
+
+
+
+
+```
+
+
+
+
+
+
+
+## Transform from long to wide
+
+```{r load, echo=FALSE}
+
+
+df_wide_PEPFARagegroups <- df_long_Grouped_SemiFine %>%
+  gather(key="counttype", value= "countvalue", -c(1:4)) %>%
+  spread(Time, countvalue) %>%
+  mutate(
+    counttype=str_remove(counttype,"Total_Value_"),
+    Perc_diff_actual= ifelse(counttype=="Actual", (`2019`/`2018`)*100, NA) ) %>%
+  #group_by(Country, PLVHIV_or_ART, ACTUAL_Age_cat_SemiFine) %>%
+  mutate(
+    Perc_diff_perdict= .[counttype == 'Predict',`2019`] / .[counttype == 'Actual',`2018`])
+  
+
+    ifelse(!is.na(`2019`) | !is.na(`2018`),
+
+#ex actual 2019 / actual 2018
+#predicted 2019/actual 2018
+
+df_wide_PEPFARagegroups <- df_combined_PEPFARage2018 %>%
+  pivot_wider(
+      names_from=Time,
+      names_glue="ACTUAL_Value_{Time}",
+      values_from=Value
+      )
+view(df_wide_PEPFARagegroups)
+
+  
+
+```
+
+
+## look at difference between acuatal ages - aging in/out actual loss or growth 
+#ex actual 2019 / actual 2018
+
+```{r load, echo=FALSE}
+
+
+
+
+
+
+mutate(df_long_Grouped_SemiFine
+  Actual_Difference= 
+    (Total_value_Actual/(Total_Value_Actual/(Time-1)
+
+time-1
+
+
+
+  for(Total_value_Actual in df_long_Grouped_SemiFine){
+  Actual_Difference <- (Total_value_Actual)/(Total_value_Actual where Time=Time-1)
+
+
+
+```
+
+
+
+##calc predicted % difference
+#predicted 2019/actual 2018
+
+
+
+```{r load, echo=FALSE}
+
+
+
+
+  
+
+```
+
+
+##Compare actual to predicted - expected impact based on aging
+
+```{r load, echo=FALSE}
+
+
+
+
+  
+
+```
+
+
+
+
+
+## Merge Tx_Curr and TX_new
+
+
+
+## Calc predicted remaining in 2019
+# prev year tx_curr*prediction % difference
+
+
+
+
+##Calc Expected FY19 CURR accounting for aging in/out
+#current FY tx_new*predicted remaning in 2019 (last calculation)
+
+###################################################
+
+
+## Pull out Uganda
+
+```{r load, echo=FALSE}
+
+df_uga <- df_combined_age_min %>%
+  filter(E_Count %in% c("Uganda"))
+  
+
+```
+
+
+
+
+## Export CSV
+
+```{r load, echo=FALSE}
+
+write.csv(df_combined_age2,"C:/Users/jesse/OneDrive/Documents/Work Material/USAID/Treatment/Data/ZMB MWI KEN UGA by age group DataList_7_9_2020 2_37_41 PM_AgeSeparated.csv", row.names = FALSE)
+
+write.csv(df_combined_age2_hiv_art,"C:/Users/jesse/OneDrive/Documents/Work Material/USAID/Treatment/Data/Spectrum_ZMB MWI KEN UGA _Age_PLHIV_ART.csv", row.names = FALSE)
+#
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+#################################   ARCHIVE CODE
+
+
+
+
+
+# Figure out predicted ages 
+#ex, 2017 ages if 2016 aged w/o other loss/gains
+
+
+```{r load, echo=FALSE}
+
+
+
+PREDICTagebreaks <- c(0,4,9,14,19,24,29,34,39,44,49,85)
+PREDICTagelabels <- c("0-3","4-8","9-13","14-18","19-23","24-28","29-33",
+               "34-38","39-43","44-48","49+")
+
+PREDICTagebreaks18 <- c(0,9,14,19,24,29,34,39,44,49,85)
+PREDICTagelabels18 <- c("0-8","9-13","14-18","19-23","24-28","29-33",
+               "34-38","39-43","44-48","49+")
+
+df_wide_PREDICTagegroupsFINE <- setDT(df_combined_PEPFARagegroups) [ , PREDICT_Age_cat_Fine := cut(Age_num, 
+                                breaks = PREDICTagebreaks, 
+                                right = FALSE, 
+                                labels = PREDICTagelabels)]
+view(df_wide_PREDICTagegroupsFINE)
+glimpse(df_wide_PREDICTagegroupsFINE)
+
+df_wide_PREDICTagegroupsALL <- setDT(df_wide_PREDICTagegroupsFINE) [ , PREDICT_Age_cat_SemiFine := cut(Age_num, 
+                                breaks = PREDICTagebreaks18, 
+                                right = FALSE, 
+                                labels = PREDICTagelabels18)]
+view(df_wide_PREDICTagegroupsALL)
+glimpse(df_wide_PREDICTagegroupsALL)
+
+```
+
+
+
+## Figure out predicted ages 
+#ex, 2017 ages if 2016 aged w/o other loss/gains
+
+
+```{r load, echo=FALSE}
+
+
+for each year and actual age cat
+  do value of previous year and 
+
+
+PRED_Value_2019(ACTUAL_Age_cat_Fine) = ACTUAL_Value_2018 (PRED_age_bands)
+
+
+#loop over age bands
+
+#long
+
+for(i in Value){
+  Pred_Value <- when Time=Time-1 & PRED_Age_cat_SemiFine=0
+
+
+  
+ # wide???
+    
+  sum(ACTUAL_Value_2018) if PRED_age_bands = 
+}
+
+PRED_Value_2019_1-9  <- ACTUAL_Value_2018_0-8
+
+PRED_Value_2019_1-9  <- ACTUAL_Value_2018_0-8
+
+
+```
+
+
+
