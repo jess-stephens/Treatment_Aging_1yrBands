@@ -78,8 +78,9 @@ Goal: the numbers for each one-year age band of people with HIV and of people on
 # make a new variable with the the values after "Age" and before ";"
 ```{r load, echo=FALSE}
 
-df_combined_seperate1 <-df_combined  %>% 
+df_combined_seperate1 <- df_combined  %>% 
     separate(E_Ind, c("A","B", "C", "D", "E"), sep = "([+;])")
+
 view(df_combined_seperate1)
 
 #"B" holds the age
@@ -87,34 +88,42 @@ view(df_combined_seperate1)
 
 df_combined_seperate2 <- df_combined_seperate1 %>% 
   separate(B, c("X", "Y", "Age_num"), sep = "([ ])")
+
   view(df_combined_seperate2)
 
   
-df_combined_seperate3<- df_combined_seperate2 %>% 
+df_combined_seperate3 <- df_combined_seperate2 %>% 
   separate(A, c("X1", "PLVHIV_or_ART", "X2"), sep = "([-])")
+
 view(df_combined_seperate3)
 
 
 names(df_combined_seperate3)
 #drop 0 from PLHIV vs ART
 
-df_combined_seperate4<- df_combined_seperate3 %>% 
+df_combined_seperate4 <- df_combined_seperate3 %>% 
     separate("PLVHIV_or_ART", c("PLVHIV_or_ART", "Y1"), sep = "([0])")
+
 view(df_combined_seperate4)
   
 #drop X1, X2, Y, X, C, D, E,Y1
-df_combined_seperate5<- df_combined_seperate4 %>% 
+df_combined_seperate5 <- df_combined_seperate4 %>% 
     select(E_Count, PLVHIV_or_ART, Age_num, Time, Value, Rounded)
-view(df_combined_seperate5)
+
+#view(df_combined_seperate5)
+head(df_combined_seperate5)
 
 #rename country variable
-df_combined_seperate6<- df_combined_seperate5 %>% 
+df_combined_seperate6 <- df_combined_seperate5 %>% 
     rename(Country=E_Count)
+
 view(df_combined_seperate6)
+
 glimpse(df_combined_seperate6)
 
-df_combined_seperate6$Age_num<-
+df_combined_seperate6$Age_num <-
     as.numeric(as.character(unlist(df_combined_seperate6$Age_num)))
+
 view(df_combined_seperate6)
 glimpse(df_combined_seperate6)
 
@@ -188,7 +197,9 @@ df_combined_PEPFARage2018 <- setDT(df_combined_PEPFARage2019) [ , ACTUAL_Age_cat
 
 
 view(df_combined_PEPFARage2018)
+
 glimpse(df_combined_PEPFARage2018)
+
 names(df_combined_PEPFARage2018)
 #df_combined_PEPFARagegroups <- df_combined_PEPFARage2018 %>%
  # select(!c(agegroups, agegroups18, agegroups19))
@@ -200,7 +211,9 @@ names(df_combined_PEPFARage2018)
 df_combined_PEPFARage2019 <- df_combined_seperate6 %>% 
     findInterval(df_combined_seperate6$Age_num, c(0,4,9,14,19,24,29,34,39,44,49,80))
     cut(df_combined_seperate6$Age_num, c(0,4,9,14,19,24,29,34,39,44,49,80, right=FALSE))
+    
 view(df_combined_PEPFARage2019)
+
 glimpse(df_combined_PEPFARage2019)
 ###Error in cut.default(df_combined_seperate6$Age_num, c(0, 4, 9, 14, 19, : 'breaks' are not unique
 
@@ -219,6 +232,7 @@ glimpse(df_combined_PEPFARage2019)
 
 df_combined_PREDICTagetime <- df_combined_PEPFARage2018 %>%
  mutate(Age_predict=Age_num+1, Time_predict=Time+1)
+
 view(df_combined_PREDICTagetime)
 
 
@@ -227,6 +241,7 @@ df_combined_PREDICTagegroups <- setDT(df_combined_PREDICTagetime) [ , PREDICT_Ag
                                 breaks = PEPFARagebreaks, 
                                 right = FALSE, 
                                 labels = PEPFARagelabels)]
+
 view(df_combined_PREDICTagegroups)
 glimpse(df_combined_PREDICTagegroups)
 
@@ -263,6 +278,7 @@ names(df_combined_PREDICTagegroups)
 df_long_Grouped_Actual_SemiFine<- df_combined_PREDICTagegroups %>%
   group_by(Country, PLVHIV_or_ART, Time, ACTUAL_Age_cat_SemiFine) %>%
   summarise(Total_Value_Actual=sum(Value))
+
 glimpse(df_long_Grouped_Actual_SemiFine)
 view(df_long_Grouped_Actual_SemiFine)
 
@@ -270,6 +286,7 @@ view(df_long_Grouped_Actual_SemiFine)
 df_long_Grouped_Predict_SemiFine<- df_combined_PREDICTagegroups %>%
   group_by(Country, PLVHIV_or_ART, Time_predict, PREDICT_Age_cat_SemiFine) %>%
   summarise(Total_Value_Predict=sum(Value))
+
 glimpse(df_long_Grouped_Predict_SemiFine)
 view(df_long_Grouped_Predict_SemiFine)
 
@@ -277,11 +294,13 @@ view(df_long_Grouped_Predict_SemiFine)
 #rename predict variables to match actual so they can merge
 df_long_Grouped_Predict_SemiFine_vars<- df_long_Grouped_Predict_SemiFine %>%
   rename(Time=Time_predict, ACTUAL_Age_cat_SemiFine=PREDICT_Age_cat_SemiFine)
+
 glimpse(df_long_Grouped_Predict_SemiFine_vars)
 view(df_long_Grouped_Predict_SemiFine_vars)
 
 df_long_Grouped_SemiFine <- df_long_Grouped_Actual_SemiFine %>% 
   left_join(df_long_Grouped_Predict_SemiFine_vars, by=c("Time"="Time", "ACTUAL_Age_cat_SemiFine"="ACTUAL_Age_cat_SemiFine","Country"="Country", "PLVHIV_or_ART"="PLVHIV_or_ART"))
+
 view(df_long_Grouped_SemiFine)
 
 
@@ -300,19 +319,49 @@ view(df_long_Grouped_SemiFine)
 
 ```{r load, echo=FALSE}
 
+## BK's solution
+## Note: Make sure to install `janitor` and `dplyr` version >= 1.0.0
+## This version calculates the perc for all years
+## Please QA the results
+df_long_Grouped_SemiFine %>%
+  janitor::clean_names() %>%
+  arrange(plvhiv_or_art, actual_age_cat_semi_fine) %>% 
+  group_by(country, plvhiv_or_art, actual_age_cat_semi_fine) %>% 
+  mutate(
+    total_prev_value_actual = lag(total_value_actual),
+    perc_diff_actual = ifelse(
+      !is.na(total_value_actual) & !is.na(total_prev_value_actual),
+      round((total_value_actual - total_prev_value_actual) / total_prev_value_actual * 100),
+      NA
+    ),
+    perc_diff_predict = ifelse(
+      !is.na(total_value_predict) & !is.na(lag(total_value_actual)),
+      round((total_value_predict - total_prev_value_actual) / total_prev_value_actual * 100),
+      NA
+    )
+  ) %>% 
+  ungroup() %>% 
+  relocate(total_prev_value_actual, .after = total_value_actual) %>% 
+  View()
 
+## This still works
+## Pay attention to the use of `lag` for `Perc_diff_predict` variables
 df_wide_PEPFARagegroups <- df_long_Grouped_SemiFine %>%
   gather(key="counttype", value= "countvalue", -c(1:4)) %>%
   spread(Time, countvalue) %>%
   mutate(
     counttype=str_remove(counttype,"Total_Value_"),
-    Perc_diff_actual= ifelse(counttype=="Actual", (`2019`/`2018`)*100, NA) ) %>%
-  #group_by(Country, PLVHIV_or_ART, ACTUAL_Age_cat_SemiFine) %>%
-  mutate(
-    Perc_diff_perdict= .[counttype == 'Predict',`2019`] / .[counttype == 'Actual',`2018`])
-  
-
-    ifelse(!is.na(`2019`) | !is.na(`2018`),
+    Perc_diff_actual= ifelse(
+      counttype == "Actual", 
+      round((`2019` - `2018`) / `2018` * 100), 
+      NA
+    ), 
+    Perc_diff_perdict = ifelse(
+      counttype == "Predict",
+      round((`2019` - lag(`2018`)) / `2018` * 100),
+      NA
+    )
+  ) %>% View()
 
 #ex actual 2019 / actual 2018
 #predicted 2019/actual 2018
@@ -323,6 +372,7 @@ df_wide_PEPFARagegroups <- df_combined_PEPFARage2018 %>%
       names_glue="ACTUAL_Value_{Time}",
       values_from=Value
       )
+
 view(df_wide_PEPFARagegroups)
 
   
